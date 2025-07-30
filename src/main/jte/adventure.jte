@@ -9,7 +9,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aventura - Spring AI Adventure</title>
-    <link rel="stylesheet" type="text/css" href="styles_adventure.css">
+    <link rel="stylesheet" type="text/css" href="/styles_adventure.css">
 </head>
 <body>
     <div class="adventure-container">
