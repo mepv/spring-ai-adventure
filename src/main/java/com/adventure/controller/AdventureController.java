@@ -34,7 +34,7 @@ public class AdventureController {
     }
 
     @PostMapping("/adventure/{id}/decision")
-    public String makeDecision(@PathVariable String id,
+    public String makeDecision(@PathVariable Long id,
                                @RequestParam String choice,
                                Model model) {
         Adventure adventure = adventureService.processDecision(id, choice);

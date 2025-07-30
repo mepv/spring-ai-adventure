@@ -4,24 +4,30 @@ import com.adventure.model.Adventure;
 import com.adventure.model.AdventureParams;
 import com.adventure.model.AdventureStatus;
 import com.adventure.model.Complexity;
+import com.adventure.repository.AdventureRepository;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AdventureService {
 
     private final ChatModel chatModel;
     private final MegalodonCarService megalodonCarService;
+    private final AdventureRepository adventureRepository;
 
-    public AdventureService(ChatModel chatModel, MegalodonCarService megalodonCarService) {
+    public AdventureService(ChatModel chatModel, MegalodonCarService megalodonCarService, AdventureRepository adventureRepository) {
         this.chatModel = chatModel;
         this.megalodonCarService = megalodonCarService;
+        this.adventureRepository = adventureRepository;
     }
 
     private static final String ADVENTURE_TEMPLATE = """
@@ -47,6 +53,7 @@ public class AdventureService {
         {additionalOptions}
         """;
 
+    @Transactional
     public Adventure createAdventure(AdventureParams params) {
         List<String> carFeatures = megalodonCarService.getRelevantFeatures(
                 params.genre() + " " + params.location()
@@ -67,14 +74,19 @@ public class AdventureService {
         );
 
         Prompt prompt = promptTemplate.create(variables);
-        String response = chatModel.call(prompt).getResult().getOutput().toString();
+        ChatResponse response = chatModel.call(prompt);
+        String text = response.getResult().getOutput().getText();
+        Adventure adventure = parseAdventureResponse(params, Objects.requireNonNull(text));
+        adventureRepository.save(adventure);
 
-        return parseAdventureResponse(response);
+        return adventure;
     }
 
-    public Adventure processDecision(String adventureId, String choice) {
-        Adventure adventure = new Adventure();
-        adventure.setCurrentTurn(2); // Increment turn
+    @Transactional(readOnly = true)
+    public Adventure processDecision(Long adventureId, String choice) {
+        Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
+        int currentTurn = adventure.getCurrentTurn();
+        adventure.setCurrentTurn(Math.addExact(currentTurn, 1));
         adventure.setStatus(AdventureStatus.IN_PROGRESS);
 
         String nextStoryPrompt = String.format(
@@ -101,9 +113,14 @@ public class AdventureService {
         return options.toString().trim();
     }
 
-    private Adventure parseAdventureResponse(String response) {
+    private Adventure parseAdventureResponse(AdventureParams params, String response) {
         Adventure adventure = new Adventure();
-        
+        adventure.setParams(params);
+        adventure.setCurrentTurn(1);
+        adventure.setStatus(AdventureStatus.CREATED);
+        adventure.setProtagonistPhysicalState("Saludable y enérgico");
+        adventure.setProtagonistEmotionalState("Determinado y optimista");
+
         String[] sections = response.split("OPCIONES:");
         
         if (sections.length >= 2) {
@@ -121,11 +138,6 @@ public class AdventureService {
             adventure.setCurrentStory(response);
             adventure.setAvailableChoices(List.of());
         }
-        
-        adventure.setCurrentTurn(1);
-        adventure.setStatus(AdventureStatus.IN_PROGRESS);
-        adventure.setProtagonistPhysicalState("Saludable y enérgico");
-        adventure.setProtagonistEmotionalState("Determinado y optimista");
         
         return adventure;
     }
