@@ -25,7 +25,7 @@ import java.util.UUID;
 public class AdventureService {
 
     private final ChatModel chatModel;
-    private final ChatMemory chatMemory = MessageWindowChatMemory.builder().build();
+    private final ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(50).build();
     private final MegalodonCarService megalodonCarService;
     private final AdventureRepository adventureRepository;
 
@@ -106,19 +106,19 @@ public class AdventureService {
     @Transactional
     public Adventure processDecision(Long adventureId, String choice) {
         Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
-        int currentTurn = adventure.getCurrentTurn();
-        adventure.setCurrentTurn(Math.addExact(currentTurn, 1));
         adventure.setStatus(AdventureStatus.IN_PROGRESS);
 
         StringBuilder nextStoryPrompt = new StringBuilder(String.format(
                 "El protagonista eligió: %s Continúa la aventura con las consecuencias de esta decisión. " +
                         "Presenta el siguiente escenario y nuevas opciones numeradas.", choice));
 
-        if (adventure.getCurrentTurn() < adventure.getParams().duration().value() + 1) {
-            nextStoryPrompt.append(" Esta es la última decisión disponible, dale un cierre a la aventura con un final.");
+        if (adventure.getCurrentTurn() == adventure.getParams().duration().value()) {
+            nextStoryPrompt.append(" \nIMPORTANTE: Esta es la última decisión disponible, " +
+                    "dale un cierre a la aventura con un desenlace anexándola en la sección HISTORIA. Conserva la sección OPCIONES:");
             adventure.setStatus(AdventureStatus.COMPLETED);
-            adventure.setCurrentTurn(Math.decrementExact(adventure.getCurrentTurn()));
         }
+        int currentTurn = adventure.getCurrentTurn();
+        adventure.setCurrentTurn(Math.addExact(currentTurn, 1));
 
         UserMessage userMessage = new UserMessage(nextStoryPrompt.toString());
         chatMemory.add(adventure.getConversationId(), userMessage);
@@ -136,13 +136,12 @@ public class AdventureService {
         for (int i = 3; i <= complexity.value(); i++) {
             options.append(i).append(". [opción ").append(i).append("]\n");
         }
-        
         return options.toString().trim();
     }
 
     private void parseAdventureResponse(Adventure adventure, String response, String conversationId) {
-        String[] sections = response.split("OPCIONES:");
-        String[] protagonistState = response.split("ESTADO:");
+        String[] sections = response.split("OPCIONES:", 2);
+        
         if (sections.length >= 2) {
             String storySection = sections[0].trim();
             if (storySection.startsWith("HISTORIA:")) {
@@ -154,14 +153,20 @@ public class AdventureService {
                 adventure.setCurrentStory(storySection);
             }
             
-            String optionsSection = sections[1].trim();
+            String[] choicesAndStates = sections[1].split("ESTADO:", 2);
+            
+            String optionsSection = choicesAndStates[0].trim();
             List<String> choices = parseChoicesFromText(optionsSection);
             adventure.setAvailableChoices(choices);
-
-            String protagonistStateSection = protagonistState[1].trim();
-            List<String> states = parseChoicesFromText(protagonistStateSection);
-            adventure.setProtagonistPhysicalState(states.get(0).substring(states.get(0).indexOf(":") + 1).trim());
-            adventure.setProtagonistEmotionalState(states.get(1).substring(states.get(1).indexOf(":") + 1).trim());
+            
+            if (choicesAndStates.length >= 2) {
+                String protagonistStateSection = choicesAndStates[1].trim();
+                List<String> states = parseChoicesFromText(protagonistStateSection);
+                if (states.size() >= 2) {
+                    adventure.setProtagonistPhysicalState(states.get(0).substring(states.get(0).indexOf(":") + 1).trim());
+                    adventure.setProtagonistEmotionalState(states.get(1).substring(states.get(1).indexOf(":") + 1).trim());
+                }
+            }
         } else {
             adventure.setCurrentStory(response);
             adventure.setAvailableChoices(List.of());
@@ -179,7 +184,6 @@ public class AdventureService {
                 choices.add(choice);
             }
         }
-        
         return choices;
     }
 }
