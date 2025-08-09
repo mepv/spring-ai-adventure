@@ -48,6 +48,7 @@ public class AdventureService {
         Estado inicial del protagonista:
         - Físico: Saludable y enérgico
         - Emocional: Determinado y optimista
+        IMPORTANTE: Actualiza los estados físico y emocional en base a las decisiones que tome el protagonista y vaya avanzando en la aventura.
         
         Genera el primer escenario de la aventura y presenta {choicesPerTurn} opciones numeradas.
         Formato de respuesta:
@@ -56,6 +57,9 @@ public class AdventureService {
         1. [opción 1]
         2. [opción 2]
         {additionalOptions}
+        ESTADO:
+        1. Físico: [estado físico]
+        2. Emocional: [estado emocional]
         """;
 
     @Transactional
@@ -89,11 +93,11 @@ public class AdventureService {
         adventure.setConversationId(conversationId);
         adventure.setParams(params);
         adventure.setCurrentTurn(1);
-        adventure.setStatus(AdventureStatus.IN_PROGRESS);
+        adventure.setStatus(AdventureStatus.CREATED);
         adventure.setProtagonistPhysicalState("Saludable y enérgico");
         adventure.setProtagonistEmotionalState("Determinado y optimista");
 
-        parseAdventureResponse(adventure, Objects.requireNonNull(text));
+        parseAdventureResponse(adventure, Objects.requireNonNull(text), conversationId);
         adventureRepository.save(adventure);
 
         return adventure;
@@ -106,14 +110,21 @@ public class AdventureService {
         adventure.setCurrentTurn(Math.addExact(currentTurn, 1));
         adventure.setStatus(AdventureStatus.IN_PROGRESS);
 
-        String nextStoryPrompt = String.format(
+        StringBuilder nextStoryPrompt = new StringBuilder(String.format(
                 "El protagonista eligió: %s Continúa la aventura con las consecuencias de esta decisión. " +
-                        "Presenta el siguiente escenario y nuevas opciones numeradas.", choice);
-        UserMessage userMessage = new UserMessage(nextStoryPrompt);
+                        "Presenta el siguiente escenario y nuevas opciones numeradas.", choice));
+
+        if (adventure.getCurrentTurn() < adventure.getParams().duration().value() + 1) {
+            nextStoryPrompt.append(" Esta es la última decisión disponible, dale un cierre a la aventura con un final.");
+            adventure.setStatus(AdventureStatus.COMPLETED);
+            adventure.setCurrentTurn(Math.decrementExact(adventure.getCurrentTurn()));
+        }
+
+        UserMessage userMessage = new UserMessage(nextStoryPrompt.toString());
         chatMemory.add(adventure.getConversationId(), userMessage);
         ChatResponse response = chatModel.call(new Prompt(chatMemory.get(adventure.getConversationId())));
         String text = response.getResult().getOutput().getText();
-        parseAdventureResponse(adventure, Objects.requireNonNull(text));
+        parseAdventureResponse(adventure, Objects.requireNonNull(text), adventure.getConversationId());
         adventureRepository.save(adventure);
 
         return adventure;
@@ -129,12 +140,16 @@ public class AdventureService {
         return options.toString().trim();
     }
 
-    private void parseAdventureResponse(Adventure adventure, String response) {
+    private void parseAdventureResponse(Adventure adventure, String response, String conversationId) {
         String[] sections = response.split("OPCIONES:");
+        String[] protagonistState = response.split("ESTADO:");
         if (sections.length >= 2) {
             String storySection = sections[0].trim();
             if (storySection.startsWith("HISTORIA:")) {
-                adventure.setCurrentStory(storySection.substring("HISTORIA:".length()).trim());
+                String story = storySection.substring("HISTORIA:".length()).trim();
+                adventure.setCurrentStory(story);
+                UserMessage userMessage = new UserMessage(story);
+                chatMemory.add(conversationId, userMessage);
             } else {
                 adventure.setCurrentStory(storySection);
             }
@@ -142,6 +157,11 @@ public class AdventureService {
             String optionsSection = sections[1].trim();
             List<String> choices = parseChoicesFromText(optionsSection);
             adventure.setAvailableChoices(choices);
+
+            String protagonistStateSection = protagonistState[1].trim();
+            List<String> states = parseChoicesFromText(protagonistStateSection);
+            adventure.setProtagonistPhysicalState(states.get(0).substring(states.get(0).indexOf(":") + 1).trim());
+            adventure.setProtagonistEmotionalState(states.get(1).substring(states.get(1).indexOf(":") + 1).trim());
         } else {
             adventure.setCurrentStory(response);
             adventure.setAvailableChoices(List.of());

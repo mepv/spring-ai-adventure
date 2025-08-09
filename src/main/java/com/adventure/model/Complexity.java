@@ -8,7 +8,7 @@ public enum Complexity {
 
     private final int value;
 
-    private Complexity(int value) {
+    Complexity(int value) {
         this.value = value;
     }
 

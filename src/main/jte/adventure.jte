@@ -22,7 +22,7 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label">Estado</span>
-                    <span class="status-badge status-${adventure.getStatus().name().toLowerCase().replace('_', '-')}">${adventure.getStatus()}</span>
+                    <span class="status-badge status-${adventure.getStatus().name().toLowerCase().replace('_', '-')}">${adventure.getStatus().value()}</span>
                 </div>
                 @if(adventure.getParams() != null)
                 <div class="info-item">
@@ -48,7 +48,8 @@
             </div>
         </div>
 
-        @if(adventure.getStatus() == AdventureStatus.IN_PROGRESS && adventure.getAvailableChoices() != null && !adventure.getAvailableChoices().isEmpty())
+        @if((adventure.getStatus() == AdventureStatus.CREATED || adventure.getStatus() == AdventureStatus.IN_PROGRESS)
+                        && adventure.getAvailableChoices() != null && !adventure.getAvailableChoices().isEmpty())
         <div class="choices-section">
             <h3 class="choices-title">¿Qué decides hacer?</h3>
             <form class="choices-form" method="post" action="/adventure/${adventure.getId()}/decision">

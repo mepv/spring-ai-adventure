@@ -8,7 +8,7 @@ public enum Duration {
 
     private final int value;
 
-    private Duration(int value) {
+    Duration(int value) {
         this.value = value;
     }
 
