@@ -1,5 +1,6 @@
 package com.adventure.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,27 +17,20 @@ public class Adventure {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String userId;
     @Embedded
     private AdventureParams params;
     private int currentTurn;
+    @Column(length = 4000)
     private String currentStory;
     private List<String> availableChoices;
     @Enumerated(EnumType.STRING)
     private AdventureStatus status;
     private String protagonistPhysicalState;
     private String protagonistEmotionalState;
+    private String conversationId;
 
     public Long getId() {
         return id;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
     }
 
     public AdventureParams getParams() {
@@ -93,5 +87,13 @@ public class Adventure {
 
     public void setProtagonistEmotionalState(String protagonistEmotionalState) {
         this.protagonistEmotionalState = protagonistEmotionalState;
+    }
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
 }
