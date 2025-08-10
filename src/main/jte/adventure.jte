@@ -18,7 +18,7 @@
             <div class="adventure-info">
                 <div class="info-item">
                     <span class="info-label">Turno</span>
-                    <span class="info-value">${adventure.getCurrentTurn()}</span>
+                    <span class="info-value">${adventure.getStatus() == AdventureStatus.COMPLETED ? adventure.getCurrentTurn() - 1 : adventure.getCurrentTurn()}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Estado</span>
@@ -68,6 +68,11 @@
         </div>
         @else
         <div class="action-buttons">
+            @if(adventure.getStatus() == AdventureStatus.COMPLETED)
+            <form method="post" action="/adventure/${adventure.getId()}/summary" style="display: inline;">
+                <button type="submit" class="btn btn-secondary">📝 Generar Resumen</button>
+            </form>
+            @endif
             <a href="/" class="btn btn-primary">Nueva Aventura</a>
         </div>
         @endif

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class AdventureController {
 
+    private static final String ADVENTURE = "adventure";
     private final AdventureService adventureService;
 
     public AdventureController(AdventureService adventureService) {
@@ -28,9 +29,8 @@ public class AdventureController {
     @PostMapping("/adventure/create")
     public String createAdventure(@ModelAttribute AdventureParams params, Model model) {
         Adventure adventure = adventureService.createAdventure(params);
-        model.addAttribute("adventure", adventure);
-
-        return "adventure";
+        model.addAttribute(ADVENTURE, adventure);
+        return ADVENTURE;
     }
 
     @PostMapping("/adventure/{id}/decision")
@@ -38,8 +38,14 @@ public class AdventureController {
                                @RequestParam String choice,
                                Model model) {
         Adventure adventure = adventureService.processDecision(id, choice);
+        model.addAttribute(ADVENTURE, adventure);
+        return ADVENTURE;
+    }
 
-        model.addAttribute("adventure", adventure);
-        return "adventure";
+    @PostMapping("/adventure/{id}/summary")
+    public String generateSummary(@PathVariable Long id, Model model) {
+        Adventure adventure = adventureService.adventureSummary(id);
+        model.addAttribute(ADVENTURE, adventure);
+        return ADVENTURE;
     }
 }

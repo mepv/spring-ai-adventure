@@ -5,8 +5,11 @@ import com.adventure.model.AdventureParams;
 import com.adventure.model.AdventureStatus;
 import com.adventure.model.Complexity;
 import com.adventure.repository.AdventureRepository;
+import com.adventure.tool.MegalodonTool;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -126,6 +129,42 @@ public class AdventureService {
         String text = response.getResult().getOutput().getText();
         parseAdventureResponse(adventure, Objects.requireNonNull(text), adventure.getConversationId());
         adventureRepository.save(adventure);
+
+        return adventure;
+    }
+
+    @Transactional(readOnly = true)
+    public Adventure adventureSummary(Long adventureId) {
+        Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
+        List<Message> messages = chatMemory.get(adventure.getConversationId())
+                .stream()
+                .filter(message -> {
+                    String content = message.getText();
+                    return !content.startsWith("Genera una aventura") && 
+                           !content.startsWith("El protagonista eligió:");
+                })
+                .toList();
+        
+        StringBuilder adventureStory = new StringBuilder();
+        for (Message message : messages) {
+            adventureStory.append(message.getText()).append("\n");
+        }
+        String summary = "Genera un resumen de la siguiente aventura:\n`" + adventureStory + "`";
+
+        StringBuilder responseBuilder = new StringBuilder(chatModel.call(summary));
+
+        String prompt = """
+                        Analiza el siguiente texto y cuenta exactamente cuántas veces se menciona la palabra 'megalodon' " +
+                        "(sin importar mayúsculas o minúsculas). Usa la herramienta disponible para hacer el conteo:""" + adventureStory;
+        String countResponse = ChatClient.create(chatModel)
+                .prompt(prompt)
+                .tools(new MegalodonTool())
+                .call()
+                .content();
+        responseBuilder.append("\n");
+        responseBuilder.append(countResponse);
+
+        adventure.setCurrentStory(responseBuilder.toString());
 
         return adventure;
     }
