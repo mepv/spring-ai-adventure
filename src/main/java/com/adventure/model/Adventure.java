@@ -28,6 +28,10 @@ public class Adventure {
     private String protagonistPhysicalState;
     private String protagonistEmotionalState;
     private String conversationId;
+    @Column(length = 4000)
+    private String initialImage;
+    @Column(length = 4000)
+    private String completionImage;
 
     public Long getId() {
         return id;
@@ -95,5 +99,21 @@ public class Adventure {
 
     public void setConversationId(String conversationId) {
         this.conversationId = conversationId;
+    }
+
+    public String getInitialImage() {
+        return initialImage;
+    }
+
+    public void setInitialImage(String initialImage) {
+        this.initialImage = initialImage;
+    }
+
+    public String getCompletionImage() {
+        return completionImage;
+    }
+
+    public void setCompletionImage(String completionImage) {
+        this.completionImage = completionImage;
     }
 }

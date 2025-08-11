@@ -31,11 +31,16 @@ public class AdventureService {
     private final ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(50).build();
     private final MegalodonCarService megalodonCarService;
     private final AdventureRepository adventureRepository;
+    private final ImageService imageService;
 
-    public AdventureService(ChatModel chatModel, MegalodonCarService megalodonCarService, AdventureRepository adventureRepository) {
+    public AdventureService(ChatModel chatModel,
+                            MegalodonCarService megalodonCarService,
+                            AdventureRepository adventureRepository,
+                            ImageService imageService) {
         this.chatModel = chatModel;
         this.megalodonCarService = megalodonCarService;
         this.adventureRepository = adventureRepository;
+        this.imageService = imageService;
     }
 
     private static final String ADVENTURE_TEMPLATE = """
@@ -101,7 +106,15 @@ public class AdventureService {
         adventure.setProtagonistEmotionalState("Determinado y optimista");
 
         parseAdventureResponse(adventure, Objects.requireNonNull(text), conversationId);
-        adventureRepository.save(adventure);
+        adventureRepository.saveAndFlush(adventure);
+
+        String prompt = String.format(
+                "Create a vivid, cinematic image representing the beginning of this adventure story: %s. " +
+                        "Focus on the initial setting and atmosphere, showing the protagonist at the start of their journey. " +
+                        "Style: realistic, high quality, adventure genre.",
+                adventure.getCurrentStory()
+        );
+        imageService.generateImage(adventure, prompt);
 
         return adventure;
     }
@@ -128,7 +141,17 @@ public class AdventureService {
         ChatResponse response = chatModel.call(new Prompt(chatMemory.get(adventure.getConversationId())));
         String text = response.getResult().getOutput().getText();
         parseAdventureResponse(adventure, Objects.requireNonNull(text), adventure.getConversationId());
-        adventureRepository.save(adventure);
+        adventureRepository.saveAndFlush(adventure);
+
+        if (adventure.getStatus() == AdventureStatus.COMPLETED) {
+            String prompt = String.format(
+                    "Create a dramatic, conclusive image representing the ending of this adventure story: %s. " +
+                            "Show the final outcome, the resolution, and the protagonist's final state. " +
+                            "Style: realistic, high quality, adventure genre with a sense of completion.",
+                    adventure.getCurrentStory()
+            );
+            imageService.generateImage(adventure, prompt);
+        }
 
         return adventure;
     }
@@ -171,7 +194,7 @@ public class AdventureService {
 
     private String generateAdditionalOptions(Complexity complexity) {
         StringBuilder options = new StringBuilder();
-        
+
         for (int i = 3; i <= complexity.value(); i++) {
             options.append(i).append(". [opción ").append(i).append("]\n");
         }
@@ -180,7 +203,7 @@ public class AdventureService {
 
     private void parseAdventureResponse(Adventure adventure, String response, String conversationId) {
         String[] sections = response.split("OPCIONES:", 2);
-        
+
         if (sections.length >= 2) {
             String storySection = sections[0].trim();
             if (storySection.startsWith("HISTORIA:")) {
@@ -191,13 +214,13 @@ public class AdventureService {
             } else {
                 adventure.setCurrentStory(storySection);
             }
-            
+
             String[] choicesAndStates = sections[1].split("ESTADO:", 2);
-            
+
             String optionsSection = choicesAndStates[0].trim();
             List<String> choices = parseChoicesFromText(optionsSection);
             adventure.setAvailableChoices(choices);
-            
+
             if (choicesAndStates.length >= 2) {
                 String protagonistStateSection = choicesAndStates[1].trim();
                 List<String> states = parseChoicesFromText(protagonistStateSection);
@@ -215,7 +238,7 @@ public class AdventureService {
     private List<String> parseChoicesFromText(String optionsText) {
         List<String> choices = new ArrayList<>();
         String[] lines = optionsText.split("\n");
-        
+
         for (String line : lines) {
             line = line.trim();
             if (line.matches("^\\d+\\.\\s+.*")) {

@@ -35,6 +35,17 @@
 
         <div class="story-section">
             <p class="story-text">${adventure.getCurrentStory()}</p>
+            @if(adventure.getInitialImage() != null && !adventure.getInitialImage().isEmpty())
+            <div class="image-section">
+                <img src="${adventure.getInitialImage()}" alt="Adventure Scene" class="adventure-image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;">
+            </div>
+            @endif
+            @if(adventure.getStatus() == AdventureStatus.COMPLETED && adventure.getCompletionImage() != null && !adventure.getCompletionImage().isEmpty())
+            <div class="image-section">
+                <h3 style="color: #2c3e50; margin-bottom: 8px;">🎯 Desenlace de la Aventura</h3>
+                <img src="${adventure.getCompletionImage()}" alt="Adventure Completion" class="adventure-image" style="max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;">
+            </div>
+            @endif
         </div>
 
         <div class="protagonist-states">
