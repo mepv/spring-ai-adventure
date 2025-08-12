@@ -3,6 +3,9 @@ package com.adventure.controller;
 import com.adventure.model.Adventure;
 import com.adventure.model.AdventureParams;
 import com.adventure.service.AdventureService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,5 +50,13 @@ public class AdventureController {
         Adventure adventure = adventureService.adventureSummary(id);
         model.addAttribute(ADVENTURE, adventure);
         return ADVENTURE;
+    }
+
+    @GetMapping("/adventure/{id}/text-speech")
+    public ResponseEntity<byte[]> streamAudio(@PathVariable Long id) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_TYPE, "audio/mpeg");
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=output.mp3");
+        return new ResponseEntity<>(adventureService.textToSpeech(id), headers, HttpStatus.OK);
     }
 }

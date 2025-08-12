@@ -15,6 +15,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +33,18 @@ public class AdventureService {
     private final MegalodonCarService megalodonCarService;
     private final AdventureRepository adventureRepository;
     private final ImageService imageService;
+    private final OpenAiAudioSpeechModel openAiAudioSpeechModel;
 
     public AdventureService(ChatModel chatModel,
                             MegalodonCarService megalodonCarService,
                             AdventureRepository adventureRepository,
-                            ImageService imageService) {
+                            ImageService imageService,
+                            OpenAiAudioSpeechModel openAiAudioSpeechModel) {
         this.chatModel = chatModel;
         this.megalodonCarService = megalodonCarService;
         this.adventureRepository = adventureRepository;
         this.imageService = imageService;
+        this.openAiAudioSpeechModel = openAiAudioSpeechModel;
     }
 
     private static final String ADVENTURE_TEMPLATE = """
@@ -156,7 +160,7 @@ public class AdventureService {
         return adventure;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Adventure adventureSummary(Long adventureId) {
         Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
         List<Message> messages = chatMemory.get(adventure.getConversationId())
@@ -188,8 +192,16 @@ public class AdventureService {
         responseBuilder.append(countResponse);
 
         adventure.setCurrentStory(responseBuilder.toString());
+        adventure.setSummaryGenerated(true);
+        adventureRepository.save(adventure);
 
         return adventure;
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] textToSpeech(Long adventureId) {
+        Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
+        return openAiAudioSpeechModel.call(adventure.getCurrentStory());
     }
 
     private String generateAdditionalOptions(Complexity complexity) {

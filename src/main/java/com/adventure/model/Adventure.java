@@ -32,6 +32,7 @@ public class Adventure {
     private String initialImage;
     @Column(length = 4000)
     private String completionImage;
+    private boolean summaryGenerated = false;
 
     public Long getId() {
         return id;
@@ -115,5 +116,13 @@ public class Adventure {
 
     public void setCompletionImage(String completionImage) {
         this.completionImage = completionImage;
+    }
+
+    public boolean isSummaryGenerated() {
+        return summaryGenerated;
+    }
+
+    public void setSummaryGenerated(boolean summaryGenerated) {
+        this.summaryGenerated = summaryGenerated;
     }
 }
