@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.core.io.ByteArrayResource;
+
+import java.util.Base64;
 
 @Controller
 public class AdventureController {
@@ -58,5 +62,10 @@ public class AdventureController {
         headers.set(HttpHeaders.CONTENT_TYPE, "audio/mpeg");
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=output.mp3");
         return new ResponseEntity<>(adventureService.textToSpeech(id), headers, HttpStatus.OK);
+    }
+
+    @PostMapping("/speech-text")
+    public ResponseEntity<String> convertSpeechToText(@RequestBody String audioData) {
+        return new ResponseEntity<>(adventureService.speechToText(audioData), HttpStatus.OK);
     }
 }

@@ -6,6 +6,9 @@ import com.adventure.model.AdventureStatus;
 import com.adventure.model.Complexity;
 import com.adventure.repository.AdventureRepository;
 import com.adventure.tool.MegalodonTool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -16,10 +19,13 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
+import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,23 +34,28 @@ import java.util.UUID;
 @Service
 public class AdventureService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AdventureService.class);
+
     private final ChatModel chatModel;
     private final ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(50).build();
     private final MegalodonCarService megalodonCarService;
     private final AdventureRepository adventureRepository;
     private final ImageService imageService;
     private final OpenAiAudioSpeechModel openAiAudioSpeechModel;
+    private final OpenAiAudioTranscriptionModel openAiAudioTranscriptionModel;
 
     public AdventureService(ChatModel chatModel,
                             MegalodonCarService megalodonCarService,
                             AdventureRepository adventureRepository,
                             ImageService imageService,
-                            OpenAiAudioSpeechModel openAiAudioSpeechModel) {
+                            OpenAiAudioSpeechModel openAiAudioSpeechModel,
+                            OpenAiAudioTranscriptionModel openAiAudioTranscriptionModel) {
         this.chatModel = chatModel;
         this.megalodonCarService = megalodonCarService;
         this.adventureRepository = adventureRepository;
         this.imageService = imageService;
         this.openAiAudioSpeechModel = openAiAudioSpeechModel;
+        this.openAiAudioTranscriptionModel = openAiAudioTranscriptionModel;
     }
 
     private static final String ADVENTURE_TEMPLATE = """
@@ -202,6 +213,26 @@ public class AdventureService {
     public byte[] textToSpeech(Long adventureId) {
         Adventure adventure = adventureRepository.findById(adventureId).orElseThrow();
         return openAiAudioSpeechModel.call(adventure.getCurrentStory());
+    }
+
+    public String speechToText(String audioData) {
+        try {
+            String dataUrl = audioData.replaceAll("^\"|\"$", "");
+            String base64Audio = dataUrl.substring(dataUrl.indexOf(",") + 1);
+            byte[] audioBytes = Base64.getDecoder().decode(base64Audio);
+            ByteArrayResource audioResource = new ByteArrayResource(audioBytes) {
+                @Override
+                public String getFilename() {
+                    return "audio.wav";
+                }
+            };
+
+            AudioTranscriptionPrompt transcriptionPrompt = new AudioTranscriptionPrompt(audioResource);
+            return openAiAudioTranscriptionModel.call(transcriptionPrompt).getResult().getOutput();
+        } catch (Exception e) {
+            logger.error("Error while converting audio to text: {}", e.getMessage());
+            return "Error al convertir audio a texto";
+        }
     }
 
     private String generateAdditionalOptions(Complexity complexity) {
