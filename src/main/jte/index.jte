@@ -71,7 +71,18 @@
                         <audio id="audioPlayback" controls style="width: 100%; margin-top: 8px; display: none;"></audio>
                         <input type="hidden" id="audioData" name="audioData">
                     </div>
-                    <div class="form-description">Escribe tu nombre o grábalo usando el micrófono</div>
+                    <div class="image-input-section" style="margin-top: 10px;">
+                        <div class="image-controls">
+                            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                            <button type="button" id="uploadBtn" class="audio-btn upload-btn">📷 Subir Imagen</button>
+                            <span id="imageStatus" class="image-status"></span>
+                        </div>
+                        <div id="imagePreview" style="margin-top: 10px; display: none;">
+                            <img id="previewImg" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                        </div>
+                        <input type="hidden" id="imageData" name="imageData">
+                    </div>
+                    <div class="form-description">Escribe tu nombre, grábalo usando el micrófono o sube una imagen para generar un nombre</div>
                 </div>
 
                 <div class="form-group">
@@ -136,6 +147,83 @@
 </div>
 
 <script>
+    class ImageUploader {
+        constructor() {
+            this.uploadBtn = document.getElementById('uploadBtn');
+            this.imageUpload = document.getElementById('imageUpload');
+            this.imagePreview = document.getElementById('imagePreview');
+            this.previewImg = document.getElementById('previewImg');
+            this.imageStatus = document.getElementById('imageStatus');
+            this.imageDataInput = document.getElementById('imageData');
+
+            this.initEventListeners();
+        }
+
+        initEventListeners() {
+            this.uploadBtn.addEventListener('click', () => this.triggerFileSelect());
+            this.imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
+        }
+
+        triggerFileSelect() {
+            this.imageUpload.click();
+        }
+
+        async handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor selecciona un archivo de imagen válido.');
+                return;
+            }
+            this.showImagePreview(file);
+
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                this.imageDataInput.value = reader.result;
+            };
+            reader.readAsDataURL(file);
+            await this.analyzeImage(file);
+        }
+
+        showImagePreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.previewImg.src = e.target.result;
+                this.imagePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async analyzeImage(file) {
+            try {
+                this.imageStatus.textContent = 'Analizando imagen con IA...';
+                this.uploadBtn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/image-analyzer', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const generatedName = await response.text();
+                    document.getElementById('protagonistName').value = generatedName.trim();
+                    this.imageStatus.textContent = 'Nombre generado: "' + generatedName.trim() + '"';
+                } else {
+                    this.imageStatus.textContent = 'Error al analizar la imagen';
+                }
+            } catch (error) {
+                console.error('Error analyzing image:', error);
+                this.imageStatus.textContent = 'Error al conectar con el servicio de análisis';
+            } finally {
+                this.uploadBtn.disabled = false;
+            }
+        }
+    }
+
     class AudioRecorder {
         constructor() {
             this.mediaRecorder = null;
@@ -238,6 +326,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         new AudioRecorder();
+        new ImageUploader();
     });
 </script>
 </body>

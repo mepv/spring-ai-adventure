@@ -5,6 +5,7 @@ import com.adventure.model.AdventureParams;
 import com.adventure.service.AdventureService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,9 +15,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.core.io.ByteArrayResource;
-
-import java.util.Base64;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 public class AdventureController {
@@ -67,5 +67,10 @@ public class AdventureController {
     @PostMapping("/speech-text")
     public ResponseEntity<String> convertSpeechToText(@RequestBody String audioData) {
         return new ResponseEntity<>(adventureService.speechToText(audioData), HttpStatus.OK);
+    }
+
+    @PostMapping(value = "image-analyzer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadImage(@RequestPart("file") MultipartFile file) {
+        return new ResponseEntity<>(adventureService.analyzeImage(file), HttpStatus.OK);
     }
 }

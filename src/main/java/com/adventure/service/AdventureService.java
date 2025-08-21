@@ -21,9 +21,17 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -232,6 +240,26 @@ public class AdventureService {
         } catch (Exception e) {
             logger.error("Error while converting audio to text: {}", e.getMessage());
             return "Error al convertir audio a texto";
+        }
+    }
+
+    public String analyzeImage(MultipartFile file) {
+        try {
+            Path uploadDirectory = Paths.get("src/main/resources/static");
+            if (Files.notExists(uploadDirectory)) Files.createDirectories(uploadDirectory);
+            Path path = uploadDirectory.resolve(Objects.requireNonNull(file.getOriginalFilename()));
+            Files.write(path, file.getBytes(), StandardOpenOption.CREATE);
+            String prompt = "Analiza esta imagen y genera un nombre apropiado para el/la protagonista de aventura basado en lo que ves. " +
+                    "Responde solo con el nombre, ya sea hombre o mujer sin explicaciones adicionales.";
+            return ChatClient.create(chatModel)
+                    .prompt()
+                    .user(u -> u.text(prompt)
+                            .media(MimeTypeUtils.IMAGE_PNG, new FileSystemResource(path)))
+                    .call()
+                    .content();
+        } catch (IOException e) {
+            logger.error("Error while analyzing image to text: {}", e.getMessage());
+            return "Error al analizar imagen";
         }
     }
 
