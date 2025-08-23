@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  chroma:
+    image: chromadb/chroma:1.0.16.dev60
+    container_name: chroma
+    ports:
+      - "8000:8000"
+    networks:
+      - adventure-network
+
+  spring-ai-adventure:
+    build: .
+    container_name: spring-ai-adventure
+    ports:
+      - "8080:8080"
+    environment:
+      - OPEN_AI_KEY=
+      - SPRING_AI_VECTORSTORE_CHROMA_CLIENT_HOST=http://chroma
+      - SPRING_AI_VECTORSTORE_CHROMA_CLIENT_PORT=8000
+      - GG_JTE_DEVELOPMENT_MODE=false
+      - GG_JTE_PRECOMPILED_TEMPLATE=true
+    depends_on:
+      - chroma
+    restart: on-failure
+    networks:
+      - adventure-network
+
+networks:
+  adventure-network:
+    driver: bridge
