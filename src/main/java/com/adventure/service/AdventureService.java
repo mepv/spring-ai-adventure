@@ -134,7 +134,7 @@ public class AdventureService {
         String prompt = String.format(
                 "Create a vivid, cinematic image representing the beginning of this adventure story: %s. " +
                         "Focus on the initial setting and atmosphere, showing the protagonist at the start of their journey. " +
-                        "Style: realistic, high quality, adventure genre.",
+                        "Do not include this prompt on the image. Style: realistic, high quality, adventure genre.",
                 adventure.getCurrentStory()
         );
         imageService.generateImage(adventure, prompt);
@@ -168,7 +168,7 @@ public class AdventureService {
 
         if (adventure.getStatus() == AdventureStatus.COMPLETED) {
             String prompt = String.format(
-                    "Create a dramatic, conclusive image representing the ending of this adventure story: %s. " +
+                    "Create a dramatic, conclusive image representing the ending of this fictional adventure story: %s. " +
                             "Show the final outcome, the resolution, and the protagonist's final state. " +
                             "Style: realistic, high quality, adventure genre with a sense of completion.",
                     adventure.getCurrentStory()
