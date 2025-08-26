@@ -66,6 +66,31 @@ Una vez completada la aventura, el sistema ofrece:
 - **TTS**: Síntesis de voz para la narración del resumen.
 - **Ada v2**: Embeddings para el sistema de vectores.
 
+## ⚠️ Limitaciones Conocidas - Tool Calling
+
+### Problema con MessageChatMemoryAdvisor
+Actualmente existe una limitación conocida en Spring AI relacionada con el manejo de tool calls en el contexto de memoria conversacional:
+
+**Problema**: Los mensajes de tool calls no se persisten correctamente en el `MessageChatMemoryAdvisor` cuando se utiliza con `InMemoryChatMemory`. Solo se almacenan la entrada del usuario y la respuesta final del modelo, omitiendo los mensajes intermedios de las llamadas a herramientas.
+
+**Comportamiento Esperado**:
+- Almacenar mensaje original del usuario
+- Persistir llamadas a herramientas del asistente
+- Guardar respuestas de las herramientas
+- Mantener coherencia en conversaciones de seguimiento
+
+**Comportamiento Actual**:
+- Solo se guardan mensajes de usuario y respuesta final
+- Los mensajes de tool calls no se persisten
+- Puede causar duplicación de mensajes al intentar workarounds
+- Las preguntas de seguimiento pueden requerir repetir tool calls
+
+**Referencias**:
+- [Issue #2101](https://github.com/spring-projects/spring-ai/issues/2101): MessageChatMemoryAdvisor no persiste tool call messages
+- [Issue #2529](https://github.com/spring-projects/spring-ai/issues/2529): Duplicación de mensajes al agregar tool calls a memoria
+
+## Imagenes
+
 ![Alt_text](./images/description.png)
 
 ![Alt_text](./images/form.png)
